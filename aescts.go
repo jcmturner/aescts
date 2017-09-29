@@ -6,7 +6,6 @@ import (
 	"crypto/cipher"
 	"errors"
 	"fmt"
-	"github.com/jcmturner/gokrb5/crypto/common"
 )
 
 // Encrypt the message with the key and the initial vector.
@@ -31,7 +30,7 @@ func Encrypt(key, iv, plaintext []byte) ([]byte, []byte, error) {
 	subsequent encryption is the next-to-last block of the encryption
 	output; this is the encrypted form of the last plaintext block.*/
 	if l <= aes.BlockSize {
-		m, _ = common.ZeroPad(m, aes.BlockSize)
+		m, _ = zeroPad(m, aes.BlockSize)
 		mode.CryptBlocks(m, m)
 		return m, m, nil
 	}
@@ -41,7 +40,7 @@ func Encrypt(key, iv, plaintext []byte) ([]byte, []byte, error) {
 		rb, _ := swapLastTwoBlocks(m, aes.BlockSize)
 		return iv, rb, nil
 	}
-	m, _ = common.ZeroPad(m, aes.BlockSize)
+	m, _ = zeroPad(m, aes.BlockSize)
 	rb, pb, lb, err := tailBlocks(m, aes.BlockSize)
 	if err != nil {
 		return []byte{}, []byte{}, fmt.Errorf("Error tailing blocks: %v", err)
@@ -168,4 +167,20 @@ func swapLastTwoBlocks(b []byte, c int) ([]byte, error) {
 	out = append(out, lb...)
 	out = append(out, pb...)
 	return out, nil
+}
+
+// zeroPad pads bytes with zeros to nearest multiple of message size m.
+func zeroPad(b []byte, m int) ([]byte, error) {
+	if m <= 0 {
+		return nil, errors.New("Invalid message block size when padding")
+	}
+	if b == nil || len(b) == 0 {
+		return nil, errors.New("Data not valid to pad: Zero size")
+	}
+	if l := len(b) % m; l != 0 {
+		n := m - l
+		z := make([]byte, n)
+		b = append(b, z...)
+	}
+	return b, nil
 }
